@@ -3,7 +3,7 @@
 #
 #   docker build -t just-make-it .
 #   docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" just-make-it          # GUI en http://localhost:8787
-#   docker run --rm -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
+#   docker run --rm --user "$(id -u)" -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
 
 # ---------------------------------------------------------------- GUI
 FROM node:22-slim AS gui

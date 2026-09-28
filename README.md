@@ -66,7 +66,7 @@ O a mano:
 ```sh
 docker build -t just-make-it .
 docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" just-make-it
-docker run --rm -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
+docker run --rm --user "$(id -u)" -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
 ```
 
 La primera construcción compila ffmpeg (~10 min); las siguientes reusan el caché de cargo. La imagen
