@@ -1,0 +1,13 @@
+{
+  "template": "texto",
+  "params": {
+    "text": "Hay una pregunta\nque tiembla adentro~\n\nY sin embargo\nla respuesta~ va a llegar~~",
+    "wpm": 120,
+    "font": "DM Sans",
+    "size": 96,
+    "align": "left",
+    "background": "#5e0f0b",
+    "ink": "#ffffff",
+    "dim": "#d67870"
+  }
+}

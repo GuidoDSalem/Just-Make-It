@@ -1,0 +1,21 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+jmi-core = { path = "crates/jmi-core" }
+fframes = { version = "=1.0.2", features = ["compile-time-svgtree"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+
+# fframes renderiza muchísimo más lento sin optimizar: las dependencias van siempre en -O3
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

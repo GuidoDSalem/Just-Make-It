@@ -1,0 +1,16 @@
+[package]
+name = "jmi-core"
+description = "Just Make It: plantillas de video (fframes) que leen sus parámetros de un JSON"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+fframes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(not(windows))'.dependencies]
+fframes = { workspace = true, features = ["h264", "libav-agree-gpl"] }

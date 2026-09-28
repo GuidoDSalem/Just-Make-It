@@ -1,0 +1,7 @@
+target/
+node_modules/
+gui/dist/
+out/
+*.mp4
+frame.png
+.DS_Store

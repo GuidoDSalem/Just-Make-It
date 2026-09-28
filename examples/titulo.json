@@ -1,0 +1,12 @@
+{
+  "template": "titulo",
+  "params": {
+    "title": "Just Make It",
+    "subtitle": "videos desde un JSON",
+    "font": "DM Sans",
+    "background": "#0f172a",
+    "ink": "#f8fafc",
+    "accent": "#f97316",
+    "duration": 4.0
+  }
+}
