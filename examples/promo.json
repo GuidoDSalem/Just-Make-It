@@ -1,0 +1,17 @@
+{
+  "template": "promo",
+  "params": {
+    "audio": "a7d77abc9810e540",
+    "volume_db": -3,
+    "phrases": "Just Make It\nvideos desde un JSON\ncon música\nen el ritmo",
+    "beats_per_phrase": "4",
+    "start_bar": 1,
+    "bpm": 0,
+    "font": "Inter 24pt",
+    "size": 170,
+    "uppercase": "yes",
+    "background": "#111111",
+    "ink": "#fafafa",
+    "accent": "#f97316"
+  }
+}

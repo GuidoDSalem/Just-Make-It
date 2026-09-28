@@ -20,6 +20,8 @@ pub enum FieldKind {
     Number { min: f64, max: f64, step: f64 },
     Color,
     Select { options: Vec<Choice> },
+    /// Una canción subida (`media_store`); el valor es su id.
+    Audio,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -44,6 +46,9 @@ impl Field {
     pub fn select(key: &'static str, label: &'static str, options: &[(&'static str, &'static str)]) -> Self {
         let options = options.iter().map(|&(value, label)| Choice { value, label }).collect();
         Self { key, label, help: None, kind: FieldKind::Select { options } }
+    }
+    pub fn audio(key: &'static str, label: &'static str) -> Self {
+        Self { key, label, help: None, kind: FieldKind::Audio }
     }
     pub fn help(mut self, help: &'static str) -> Self {
         self.help = Some(help);

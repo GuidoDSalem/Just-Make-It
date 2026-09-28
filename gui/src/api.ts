@@ -4,7 +4,8 @@ export type FieldKind =
   | { type: 'text'; multiline: boolean }
   | { type: 'number'; min: number; max: number; step: number }
   | { type: 'color' }
-  | { type: 'select'; options: { value: string; label: string }[] };
+  | { type: 'select'; options: { value: string; label: string }[] }
+  | { type: 'audio' };
 
 export type Field = { key: string; label: string; help?: string } & FieldKind;
 
@@ -43,13 +44,37 @@ export interface PreviewRes {
   diagnostics: Diagnostic[];
 }
 
+export interface Tempo {
+  bpm: number;
+  period: number;
+  first_beat: number;
+  first_downbeat: number;
+  duration: number;
+  confidence: number;
+}
+
+export interface License {
+  license: string;
+  source: string;
+  author: string;
+}
+
+export interface MediaInfo extends License {
+  id: string;
+  name: string;
+  file: string;
+  kind: string;
+  tempo: Tempo | null;
+  bytes: number;
+}
+
 export type JobStatus =
   | { status: 'running' }
   | { status: 'done'; seconds: number }
   | { status: 'failed'; error: string }
   | { status: 'cancelled' };
 
-export type Job = JobStatus & { id: number; progress: number; frames: number; total: number };
+export type Job = JobStatus & { id: number; progress: number; frames: number; total: number; credits?: string[] };
 
 async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const r = await fetch(`/api${path}`, {
@@ -74,4 +99,15 @@ export const api = {
   job: (id: number) => call<Job>(`/jobs/${id}`),
   cancel: (id: number) => call<void>(`/jobs/${id}/cancel`, {}),
   fileUrl: (id: number) => `/api/jobs/${id}/file`,
+  media: () => call<MediaInfo[]>('/media'),
+  upload: async (file: File, license: License) => {
+    const q = new URLSearchParams({ name: file.name, ...license });
+    const r = await fetch(`/api/media?${q}`, { method: 'POST', body: file });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      throw new Error(e.error ?? r.statusText);
+    }
+    return (await r.json()) as MediaInfo;
+  },
+  mediaUrl: (id: string) => `/api/media/${id}/file`,
 };

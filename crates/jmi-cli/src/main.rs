@@ -7,6 +7,8 @@
 //!   jmi frame proyecto.json --at 2s        un frame a PNG (y los problemas que encuentre)
 //!   jmi render proyecto.json -o video.mp4  el video
 //!   jmi batch proyecto.json filas.csv      un video por fila (cada columna reemplaza un parámetro)
+//!   jmi media add cancion.mp3 --license "Pixabay Content License" --source https://…
+//!   jmi media list                         canciones subidas, con licencia y BPM
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use jmi_core::{Project, RenderJob, templates};
@@ -19,6 +21,9 @@ use std::time::{Duration, Instant};
 #[derive(Parser)]
 #[command(name = "jmi", about = "Just Make It: videos desde plantillas y un JSON", version)]
 struct Cli {
+    /// Carpeta de las canciones subidas.
+    #[arg(long, global = true, env = "JMI_MEDIA_DIR", default_value = "media")]
+    media: PathBuf,
     #[command(subcommand)]
     cmd: Cmd,
 }
@@ -71,6 +76,28 @@ enum Cmd {
         #[arg(long, default_value_t = 1.0)]
         scale: f64,
     },
+    /// Canciones: subir (con su licencia) y listar.
+    #[command(subcommand)]
+    Media(MediaCmd),
+}
+
+#[derive(Subcommand)]
+enum MediaCmd {
+    /// Guarda una canción, detecta su tempo y devuelve su id (para el parámetro "audio").
+    Add {
+        file: PathBuf,
+        /// Licencia con la que se usa ("Pixabay Content License", "CC BY 4.0", "Propia"…). Obligatoria.
+        #[arg(long)]
+        license: String,
+        /// Link a la canción o al comprobante.
+        #[arg(long, default_value = "")]
+        source: String,
+        /// Autor (para las licencias que piden atribución).
+        #[arg(long, default_value = "")]
+        author: String,
+    },
+    /// Lista las canciones subidas.
+    List,
 }
 
 fn main() -> ExitCode {
@@ -84,7 +111,23 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<()> {
+    jmi_core::media_store::set_root(&cli.media);
     match cli.cmd {
+        Cmd::Media(MediaCmd::Add { file, license, source, author }) => {
+            let bytes = std::fs::read(&file).with_context(|| file.display().to_string())?;
+            let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let info = jmi_core::media_store::add_audio(&name, &bytes, jmi_core::media_store::License { license, source, author })?;
+            if let Some(t) = &info.tempo {
+                eprintln!("{}: {:.1} BPM, {:.1}s, primer tiempo en {:.2}s (confianza {:.0}%)", info.name, t.bpm, t.duration, t.first_downbeat, t.confidence * 100.0);
+            }
+            println!("{}", info.id);
+        }
+        Cmd::Media(MediaCmd::List) => {
+            for m in jmi_core::media_store::list() {
+                let bpm = m.tempo.as_ref().map(|t| format!("{:.1} BPM", t.bpm)).unwrap_or_default();
+                println!("{}  {:<10}  {}", m.id, bpm, m.credit());
+            }
+        }
         Cmd::Templates => {
             for t in templates() {
                 let i = t.info();

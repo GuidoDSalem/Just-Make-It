@@ -1,12 +1,12 @@
 //! Render de un video completo y de frames sueltos, genérico sobre cualquier `fframes::Video`.
 use anyhow::{Context, Result, anyhow};
 use fframes::{
-    AbortSignal, CpuFrameRenderer, EncoderOptions, FFramesLogger, FFramesLoggerVariant, Previewer,
-    RenderOptions, Video, cpu::CpuRenderingBackend,
+    AbortSignal, CombinedMediaProvider, CpuFrameRenderer, EncoderOptions, FFramesLogger, FFramesLoggerVariant,
+    MediaDirectory, MediaProvider, Previewer, RenderOptions, Video, cpu::CpuRenderingBackend,
 };
 use serde::Serialize;
 use std::io::Cursor;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -83,9 +83,9 @@ pub struct VideoInfo {
     pub seconds: f32,
 }
 
-fn options<'a>(scale: f64) -> RenderOptions<'a, 'static> {
+fn options<'a, 'm>(media: &'m (dyn MediaProvider<'m> + 'm), scale: f64) -> RenderOptions<'a, 'm> {
     RenderOptions {
-        media: Some(crate::media()),
+        media: Some(media),
         default_font: "DM Sans",
         scale_resolution: scale,
         video_encoder_options: EncoderOptions {
@@ -97,18 +97,34 @@ fn options<'a>(scale: f64) -> RenderOptions<'a, 'static> {
     }
 }
 
+/// Deja en `$m` los medios embebidos (tipografías) más, si hay, los de una carpeta del usuario
+/// (una canción). Es una macro porque el proveedor combinado toma prestadas variables locales.
+macro_rules! media_provider {
+    ($extra:expr => $m:ident) => {
+        let folder = $extra.map(|dir: &Path| MediaDirectory::read_folder(dir).with_context(|| dir.display().to_string())).transpose()?;
+        let dynamic = folder.as_ref().map(|f| f.process_media_source()).transpose()?;
+        let combined;
+        let $m: &dyn MediaProvider = match &dynamic {
+            Some(d) => {
+                combined = CombinedMediaProvider::from([crate::media() as &dyn MediaProvider, d as &dyn MediaProvider]);
+                &combined
+            }
+            None => crate::media(),
+        };
+    };
+}
+
 /// Renderiza el video a `job.output`. Bloquea hasta terminar (usar en un hilo aparte).
-pub fn render_video<V: Video + Send + Sync>(video: &V, job: &RenderJob) -> Result<()> {
+pub fn render_video<V: Video + Send + Sync>(video: &V, media: Option<&Path>, job: &RenderJob) -> Result<()> {
     if let Some(parent) = job.output.parent() {
         std::fs::create_dir_all(parent).ok();
     }
-    let mut opts = options(job.scale);
+    media_provider!(media => m);
+    let mut opts = options(m, job.scale);
     opts.logger = FFramesLoggerVariant::Custom(Arc::new(ProgressLogger(job.progress.clone())));
-    // fframes pide la señal con la vida de los medios ('static): se filtra un Arc (8 bytes por render)
-    let abort: &'static Arc<AbortSignal> = Box::leak(Box::new(job.abort.clone()));
-    opts.abort_signal = Some(abort.as_ref());
+    opts.abort_signal = Some(&job.abort);
     if let Some(range) = &job.range {
-        let previewer = Previewer::new(video, &options(1.0))?;
+        let previewer = Previewer::new(video, &options(m, 1.0))?;
         opts.frame_range = Some(previewer.timeline().resolve_range(range).map_err(|e| anyhow!("rango {range:?}: {e}"))?);
     }
     fframes::render(&job.output, video, CpuRenderingBackend::default(), &opts)
@@ -116,8 +132,9 @@ pub fn render_video<V: Video + Send + Sync>(video: &V, job: &RenderJob) -> Resul
 }
 
 /// Renderiza un frame (tiempo en la sintaxis de fframes: `"1.5s"`, `"50%"`, `"end"`, `"42"`) a PNG.
-pub fn render_preview<V: Video + Send + Sync>(video: &V, at: &str, scale: f64) -> Result<Preview> {
-    let mut previewer = Previewer::new(video, &options(scale))?;
+pub fn render_preview<V: Video + Send + Sync>(video: &V, media: Option<&Path>, at: &str, scale: f64) -> Result<Preview> {
+    media_provider!(media => m);
+    let mut previewer = Previewer::new(video, &options(m, scale))?;
     let frame = previewer.timeline().resolve_frame(at).map_err(|e| anyhow!("tiempo {at:?}: {e}"))?;
     let (pixels, report) = previewer.render_inspected(frame, &mut CpuFrameRenderer::default())?;
     let mut png = Vec::new();
@@ -134,8 +151,9 @@ pub fn render_preview<V: Video + Send + Sync>(video: &V, at: &str, scale: f64) -
     })
 }
 
-pub fn video_info<V: Video + Send + Sync>(video: &V) -> Result<VideoInfo> {
-    let previewer = Previewer::new(video, &options(1.0))?;
+pub fn video_info<V: Video + Send + Sync>(video: &V, media: Option<&Path>) -> Result<VideoInfo> {
+    media_provider!(media => m);
+    let previewer = Previewer::new(video, &options(m, 1.0))?;
     let t = previewer.timeline_report();
     Ok(VideoInfo { width: t.width, height: t.height, fps: t.fps, frames: t.duration_frames, seconds: t.duration_seconds })
 }

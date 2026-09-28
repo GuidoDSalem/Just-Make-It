@@ -6,3 +6,5 @@ out/
 frame.png
 .DS_Store
 *.tsbuildinfo
+# canciones subidas (cada una con su licencia en meta.json)
+/media/

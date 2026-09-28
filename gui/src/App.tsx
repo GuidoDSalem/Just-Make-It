@@ -175,6 +175,9 @@ export function App() {
           <section className="result">
             <video src={api.fileUrl(job.id)} controls />
             <a href={api.fileUrl(job.id)} download>Descargar ({job.seconds.toFixed(1)} s de render)</a>
+            {job.credits && job.credits.length > 0 && (
+              <p className="credits">Música: {job.credits.join(' · ')}<br />Incluí estos créditos al publicar si la licencia pide atribución.</p>
+            )}
           </section>
         )}
 

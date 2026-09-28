@@ -1,17 +1,22 @@
 // Formulario armado a partir de los campos que declara la plantilla.
 import type { Field, Params } from './api';
+import { AudioField } from './AudioField';
 
 export function Form({ fields, params, onChange }: { fields: Field[]; params: Params; onChange: (p: Params) => void }) {
   const set = (key: string, value: unknown) => onChange({ ...params, [key]: value });
   return (
     <div className="form">
-      {fields.map((f) => (
-        <label key={f.key} className={`field field-${f.type}`}>
-          <span className="label">{f.label}</span>
-          <Input field={f} value={params[f.key]} onChange={(v) => set(f.key, v)} />
-          {f.help && <span className="help">{f.help}</span>}
-        </label>
-      ))}
+      {fields.map((f) => {
+        // (el campo de canción tiene varios controles adentro: no puede ser un <label>)
+        const Wrap = f.type === 'audio' ? 'div' : 'label';
+        return (
+          <Wrap key={f.key} className={`field field-${f.type}`}>
+            <span className="label">{f.label}</span>
+            <Input field={f} value={params[f.key]} onChange={(v) => set(f.key, v)} />
+            {f.help && <span className="help">{f.help}</span>}
+          </Wrap>
+        );
+      })}
     </div>
   );
 }
@@ -38,6 +43,8 @@ function Input({ field: f, value, onChange }: { field: Field; value: unknown; on
           <input className="hex" type="text" value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />
         </div>
       );
+    case 'audio':
+      return <AudioField value={String(value ?? '')} onChange={onChange} />;
     case 'select':
       return (
         <select value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>

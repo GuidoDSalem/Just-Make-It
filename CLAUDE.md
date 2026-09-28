@@ -16,6 +16,9 @@ interfaz y documentación en español rioplatense.
   familia y el peso que existen (`FONTS` en `lib.rs`).
 - Para mirar resultados sin GPU: `jmi frame proyecto.json --at 50% -o f.png --scale 0.5` y abrir el
   PNG. La GUI se prueba con `jmi-server` + Playwright (Chromium en `/opt/pw-browsers` en la nube).
+- Música: toda canción entra por `media_store::add_audio` con licencia (obligatoria); las plantillas
+  la referencian por id en sus parámetros y la devuelven en `VideoTemplate::media`. No subir al
+  repo canciones de terceros: sólo `examples/musica/` generada por `scripts/demo_song.py` (CC0).
 - La API y los tipos de la GUI (`gui/src/api.ts`) reflejan `jmi-core` (`fields.rs`, `render.rs`):
   cambiarlos juntos.
 - Guía de fframes para agentes: `npx skills add dmtrKovalenko/fframes`, o

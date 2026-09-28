@@ -34,13 +34,21 @@ color es instantáneo, y sólo cambiar el diseño de una plantilla requiere reco
 - `render.rs`: render genérico de un video (`render_video`, con progreso y cancelación) y de un
   frame a PNG con los problemas que encuentre fframes (`render_preview`).
 - `project.rs`: el formato de proyecto `{ "template", "params" }`.
+- `media_store.rs`: canciones subidas. Una carpeta por canción (`<raíz>/<id>/`, el id sale del
+  contenido) con el archivo y un `meta.json` con nombre, licencia, fuente, autor y tempo. Sin
+  licencia no se guarda.
+- `beats.rs`: detección de tempo (tempo constante). Envolvente de ataques sin graves →
+  autocorrelación con preferencia por ~120 BPM → pico fraccionario → fase y período fino por
+  búsqueda en grilla → el "1" del compás es la posición con más graves. Probado con loops sintéticos
+  de 96 a 140 BPM.
 - `media/`: tipografías embebidas en el binario (`include_media_dir!`). En esa carpeta sólo puede
   haber medios.
 
 ### Agregar una plantilla
 
 1. `crates/jmi-core/src/templates/<id>.rs` con `Params` (+ `Default` con un ejemplo completo), el
-   video (`impl fframes::Video`) y `impl VideoTemplate`.
+   video (`impl fframes::Video`) y `impl VideoTemplate`. Si usa una canción, `media()` devuelve su
+   ficha: el motor carga esa carpeta como medios de fframes y escribe los créditos al renderizar.
 2. Registrarla en `templates()` de `templates/mod.rs`.
 3. `cargo test -p jmi-core --release`: los tests genéricos renderizan todas las plantillas con sus
    valores por defecto y fallan si hay texto cortado, tipografías faltantes o pánicos.
@@ -57,10 +65,14 @@ La GUI y la CLI la toman solas.
 | POST | `/api/render` | `{template, params, scale}` → `{id}` |
 | GET | `/api/jobs/{id}` | `{status: running/done/failed/cancelled, progress, frames, total}` |
 | POST | `/api/jobs/{id}/cancel` | cancela |
-| GET | `/api/jobs/{id}/file` | el `.mp4` |
+| GET | `/api/jobs/{id}/file` | el `.mp4` (el estado del trabajo trae `credits`) |
+| GET | `/api/media` | canciones subidas, con licencia y tempo |
+| POST | `/api/media?name=&license=&source=&author=` | sube una canción (el cuerpo es el archivo, hasta 200 MB) |
+| GET | `/api/media/{id}/file` | el audio |
+| POST | `/api/media/{id}/license` | `{license, source, author}` |
 
-Todo lo demás sirve la GUI compilada (`gui/dist`). Opciones: `--addr`, `--gui`, `--out` (o
-`JMI_ADDR`, `JMI_GUI_DIR`, `JMI_OUT_DIR`).
+Todo lo demás sirve la GUI compilada (`gui/dist`). Opciones: `--addr`, `--gui`, `--out`, `--media`
+(o `JMI_ADDR`, `JMI_GUI_DIR`, `JMI_OUT_DIR`, `JMI_MEDIA_DIR`).
 
 Los renders corren en hilos aparte (`spawn_blocking`); los trabajos viven en memoria (se pierden al
 reiniciar el servidor).

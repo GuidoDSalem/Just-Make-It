@@ -67,9 +67,9 @@ impl VideoTemplate for Texto {
         ]
     }
 
-    fn build(p: Params) -> TextoVideo {
+    fn build(p: Params) -> anyhow::Result<TextoVideo> {
         let (screens, duration) = timing(&p.text, p.wpm);
-        TextoVideo { weight: crate::font_weight(&p.font), p, screens, duration, sizes: OnceLock::new() }
+        Ok(TextoVideo { weight: crate::font_weight(&p.font), p, screens, duration, sizes: OnceLock::new() })
     }
 }
 

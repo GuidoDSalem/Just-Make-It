@@ -5,3 +5,4 @@ gui/dist
 **/*.tsbuildinfo
 **/*.mp4
 .git
+/media

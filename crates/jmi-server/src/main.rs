@@ -7,15 +7,21 @@
 //!   GET  /api/jobs/{id}            estado y progreso de un render
 //!   POST /api/jobs/{id}/cancel     cancela un render
 //!   GET  /api/jobs/{id}/file       el .mp4
+//!   GET  /api/media                canciones subidas (con licencia y tempo)
+//!   POST /api/media?name=&license=&source=&author=   sube una canción (el cuerpo es el archivo)
+//!   GET  /api/media/{id}/file      el audio
+//!   POST /api/media/{id}/license   {license, source, author}
 //!   GET  /                         la GUI (gui/dist)
 use anyhow::anyhow;
-use axum::extract::{Path, State};
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use base64::Engine;
 use clap::Parser;
+use jmi_core::media_store::{self, License, MediaInfo};
 use jmi_core::{Project, RenderJob, TemplateInfo};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -38,6 +44,9 @@ struct Args {
     /// Dónde quedan los videos renderizados.
     #[arg(long, default_value = "out/jobs", env = "JMI_OUT_DIR")]
     out: PathBuf,
+    /// Dónde se guardan las canciones subidas.
+    #[arg(long, default_value = "media", env = "JMI_MEDIA_DIR")]
+    media: PathBuf,
 }
 
 #[derive(Clone)]
@@ -51,6 +60,7 @@ struct AppState {
 struct Job {
     render: RenderJob,
     status: Arc<Mutex<JobStatus>>,
+    credits: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -82,6 +92,8 @@ type ApiResult<T> = Result<T, ApiError>;
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     std::fs::create_dir_all(&args.out)?;
+    std::fs::create_dir_all(&args.media)?;
+    jmi_core::media_store::set_root(&args.media);
     let state = AppState { out: args.out.clone(), jobs: Arc::default(), next: Arc::new(AtomicU64::new(1)) };
 
     let api = Router::new()
@@ -92,6 +104,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/jobs/{id}", get(job_status))
         .route("/jobs/{id}/cancel", post(job_cancel))
         .route("/jobs/{id}/file", get(job_file))
+        .route("/media", get(media_list).post(media_upload))
+        .route("/media/{id}/file", get(media_file))
+        .route("/media/{id}/license", post(media_license))
+        // canciones de hasta 200 MB
+        .layer(DefaultBodyLimit::max(200 * 1024 * 1024))
         .with_state(state);
 
     let gui = ServeDir::new(&args.gui).fallback(ServeFile::new(args.gui.join("index.html")));
@@ -169,7 +186,8 @@ async fn render(State(s): State<AppState>, Json(req): Json<RenderReq>) -> ApiRes
     let id = s.next.fetch_add(1, Ordering::Relaxed);
     let mut render = RenderJob::new(s.out.join(format!("{id}-{}.mp4", req.project.template)));
     render.scale = req.scale.clamp(0.25, 2.0);
-    let job = Job { render: render.clone(), status: Arc::new(Mutex::new(JobStatus::Running)) };
+    let credits = tpl.credits(&req.project.params)?;
+    let job = Job { render: render.clone(), status: Arc::new(Mutex::new(JobStatus::Running)), credits };
     s.jobs.lock().unwrap().insert(id, job.clone());
 
     let params = req.project.params;
@@ -196,6 +214,7 @@ async fn job_status(State(s): State<AppState>, Path(id): Path<u64>) -> ApiResult
     v["progress"] = job.render.progress.fraction().into();
     v["frames"] = job.render.progress.done.load(Ordering::Relaxed).into();
     v["total"] = job.render.progress.total.load(Ordering::Relaxed).into();
+    v["credits"] = job.credits.clone().into();
     Ok(Json(v))
 }
 
@@ -216,4 +235,39 @@ async fn job_file(State(s): State<AppState>, Path(id): Path<u64>) -> ApiResult<R
         bytes,
     )
         .into_response())
+}
+
+// ------------------------------------------------------------------ canciones
+
+async fn media_list() -> Json<Vec<MediaInfo>> {
+    Json(tokio::task::spawn_blocking(media_store::list).await.unwrap_or_default())
+}
+
+#[derive(Deserialize)]
+struct UploadQuery {
+    name: String,
+    #[serde(flatten)]
+    license: License,
+}
+
+async fn media_upload(Query(q): Query<UploadQuery>, body: Bytes) -> ApiResult<Json<MediaInfo>> {
+    let info = tokio::task::spawn_blocking(move || media_store::add_audio(&q.name, &body, q.license)).await??;
+    Ok(Json(info))
+}
+
+async fn media_license(Path(id): Path<String>, Json(license): Json<License>) -> ApiResult<Json<MediaInfo>> {
+    Ok(Json(media_store::update(&id, Some(license))?))
+}
+
+async fn media_file(Path(id): Path<String>) -> ApiResult<Response> {
+    let info = media_store::get(&id)?;
+    let bytes = tokio::fs::read(info.path()).await?;
+    let mime = match info.file.rsplit('.').next() {
+        Some("mp3") => "audio/mpeg",
+        Some("wav") => "audio/wav",
+        Some("ogg") => "audio/ogg",
+        Some("flac") => "audio/flac",
+        _ => "application/octet-stream",
+    };
+    Ok(([(header::CONTENT_TYPE, mime)], bytes).into_response())
 }

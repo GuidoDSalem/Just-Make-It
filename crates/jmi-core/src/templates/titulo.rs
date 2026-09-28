@@ -56,8 +56,8 @@ impl VideoTemplate for Titulo {
         ]
     }
 
-    fn build(p: Params) -> TituloVideo {
-        TituloVideo { weight: crate::font_weight(&p.font), p, size: OnceLock::new() }
+    fn build(p: Params) -> anyhow::Result<TituloVideo> {
+        Ok(TituloVideo { weight: crate::font_weight(&p.font), p, size: OnceLock::new() })
     }
 }
 

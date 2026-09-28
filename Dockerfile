@@ -2,7 +2,7 @@
 # Just Make It: GUI + API (jmi-server) y la CLI (jmi) en una imagen.
 #
 #   docker build -t just-make-it .
-#   docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" just-make-it          # GUI en http://localhost:8787
+#   docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" -v "$PWD/media:/data/media" just-make-it   # GUI en http://localhost:8787
 #   docker run --rm --user "$(id -u)" -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
 
 # ---------------------------------------------------------------- GUI
@@ -43,13 +43,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends libx264-164 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 jmi \
-    && mkdir -p /data/out && chown jmi /data/out
+    && mkdir -p /data/out /data/media && chown jmi /data/out /data/media
 COPY --from=build /out/jmi-server /out/jmi /usr/local/bin/
 COPY --from=gui /gui/dist /app/gui
 COPY examples /app/examples
-ENV JMI_ADDR=0.0.0.0:8787 JMI_GUI_DIR=/app/gui JMI_OUT_DIR=/data/out
+ENV JMI_ADDR=0.0.0.0:8787 JMI_GUI_DIR=/app/gui JMI_OUT_DIR=/data/out JMI_MEDIA_DIR=/data/media
 USER jmi
 WORKDIR /data
-VOLUME /data/out
+VOLUME ["/data/out", "/data/media"]
 EXPOSE 8787
 CMD ["jmi-server"]

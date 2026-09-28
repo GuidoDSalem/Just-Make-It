@@ -23,8 +23,34 @@ proyecto.json ──► plantilla (fframes) ──► video.mp4
 
 Plantillas disponibles (`jmi templates`):
 
+- **`promo`**: promo con música. Subís una canción, se detecta el BPM y las frases entran en los
+  tiempos fuertes, con todo latiendo al pulso.
 - **`titulo`**: placa de título (título, subtítulo, colores, tipografía, duración).
 - **`texto`**: texto palabra por palabra a ritmo de lectura, pantalla por pantalla.
+
+## Música
+
+Cada canción se sube **con su licencia** (es obligatoria): queda guardada junto al archivo y cada
+video que la usa sale con un `<video>.mp4.creditos.txt` al lado. Al subirla se detecta el tempo
+(BPM, primer tiempo fuerte); si la detección falla, el BPM se puede fijar a mano en la plantilla.
+
+De dónde sacar música que se puede usar (revisá siempre los términos vigentes de cada sitio):
+
+- Gratis: Pixabay Music (uso comercial, sin atribución), YouTube Audio Library, Incompetech (CC BY:
+  hay que nombrar al autor), Free Music Archive y ccMixter (licencia por canción).
+- Por suscripción: Epidemic Sound, Artlist, Uppbeat.
+- Generada con IA (Suno, Udio): en general sólo los planes pagos dan uso comercial.
+- Evitá canciones bajadas de Spotify o YouTube: las plataformas las detectan y bajan o silencian el video.
+
+`examples/musica/demo-118bpm.mp3` es una canción de prueba hecha por código
+(`scripts/demo_song.py`), de dominio público (CC0):
+
+```sh
+jmi media add examples/musica/demo-118bpm.mp3 --license CC0 --source scripts/demo_song.py
+jmi render examples/promo.json -o promo.mp4
+```
+
+Las canciones se guardan en `media/` (o en `JMI_MEDIA_DIR`), una carpeta por canción.
 
 ## Requisitos
 
@@ -58,14 +84,14 @@ en otra (Vite le pasa `/api` al servidor).
 Sin instalar Rust ni Node: la imagen trae la GUI, la API y la CLI.
 
 ```sh
-docker compose up --build            # http://localhost:8787, los videos quedan en ./out
+docker compose up --build            # http://localhost:8787; videos en ./out, canciones en ./media
 ```
 
 O a mano:
 
 ```sh
 docker build -t just-make-it .
-docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" just-make-it
+docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" -v "$PWD/media:/data/media" just-make-it
 docker run --rm --user "$(id -u)" -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
 ```
 
@@ -82,6 +108,8 @@ $J new titulo -o proyecto.json                 # proyecto nuevo
 $J frame proyecto.json --at 2s -o frame.png    # un frame (y los problemas que encuentre)
 $J render proyecto.json -o video.mp4           # el video (--scale 0.5 borrador, 2 = 4K)
 $J batch examples/titulo.json examples/charlas.csv -o videos/ --name title
+$J media add cancion.mp3 --license "Pixabay Content License" --source https://…   # → id
+$J media list                                  # canciones, BPM y licencias
 ```
 
 `batch` hace un video por fila: cada columna del CSV reemplaza un parámetro del proyecto (también
@@ -101,6 +129,7 @@ curl -o video.mp4 localhost:8787/api/jobs/1/file
 ## Estado y próximos pasos
 
 - [x] Motor con plantillas que leen un JSON, CLI, lotes, API y GUI web.
+- [x] Música con licencia, detección de tempo y plantilla `promo` en el ritmo.
 - [ ] Más plantillas (vertical para redes, audio con subtítulos, explicador con datos).
 - [ ] Render en GPU (backend Skia de fframes: Metal en Mac, Vulkan en Linux/Windows).
 - [x] Contenedor (Docker) con la GUI, la API y la CLI.

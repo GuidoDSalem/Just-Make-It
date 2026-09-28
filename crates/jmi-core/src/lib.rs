@@ -9,7 +9,9 @@
 //! let params = serde_json::json!({ "title": "Hola" });
 //! tpl.render(&params, &RenderJob::new("out.mp4"))?;
 //! ```
+pub mod beats;
 pub mod fields;
+pub mod media_store;
 pub mod project;
 pub mod render;
 pub mod templates;
