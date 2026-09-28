@@ -1,0 +1,9 @@
+# docker compose up --build  →  http://localhost:8787
+services:
+  jmi:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./out:/data/out
+    restart: unless-stopped

@@ -53,6 +53,25 @@ renderizás. "Exportar JSON" baja el proyecto para automatizarlo.
 Para desarrollar la GUI con recarga en vivo: `jmi-server` en una terminal y `cd gui && npm run dev`
 en otra (Vite le pasa `/api` al servidor).
 
+### Docker
+
+Sin instalar Rust ni Node: la imagen trae la GUI, la API y la CLI.
+
+```sh
+docker compose up --build            # http://localhost:8787, los videos quedan en ./out
+```
+
+O a mano:
+
+```sh
+docker build -t just-make-it .
+docker run --rm -p 8787:8787 -v "$PWD/out:/data/out" just-make-it
+docker run --rm -v "$PWD:/work" -w /work just-make-it jmi render examples/titulo.json -o out/titulo.mp4
+```
+
+La primera construcción compila ffmpeg (~10 min); las siguientes reusan el caché de cargo. La imagen
+final pesa ~230 MB y renderiza en CPU (el render en GPU necesita otra imagen, con drivers).
+
 ### Línea de comandos
 
 ```sh
@@ -84,7 +103,8 @@ curl -o video.mp4 localhost:8787/api/jobs/1/file
 - [x] Motor con plantillas que leen un JSON, CLI, lotes, API y GUI web.
 - [ ] Más plantillas (vertical para redes, audio con subtítulos, explicador con datos).
 - [ ] Render en GPU (backend Skia de fframes: Metal en Mac, Vulkan en Linux/Windows).
-- [ ] App de escritorio (Tauri) y contenedor (Docker) con la misma GUI.
+- [x] Contenedor (Docker) con la GUI, la API y la CLI.
+- [ ] App de escritorio (Tauri) con la misma GUI.
 - [ ] Vista previa en el navegador con WebAssembly.
 
 ## Créditos

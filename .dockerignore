@@ -1,0 +1,7 @@
+target
+out
+gui/node_modules
+gui/dist
+**/*.tsbuildinfo
+**/*.mp4
+.git

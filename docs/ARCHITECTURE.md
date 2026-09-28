@@ -72,5 +72,7 @@ La GUI es web y el motor es una librería, así que el mismo código se empaquet
 - **Navegador + servidor** (hoy): `jmi-server` local o en la nube.
 - **Escritorio** (Tauri): la GUI dentro de una app nativa que llama a `jmi-core` directo y puede
   usar la GPU de la máquina.
-- **Contenedor** (Docker): `jmi-server` para renders automáticos en la nube.
+- **Contenedor** (Docker, hecho): `Dockerfile` en tres etapas (GUI con Node, motor con Rust sobre
+  Ubuntu 24.04, imagen final con los binarios, la GUI y `libx264`). Sirve para renders automáticos en
+  la nube.
 - **Vista previa en el navegador**: fframes compila a WebAssembly (su editor ya lo hace).
